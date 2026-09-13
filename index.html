@@ -34,7 +34,7 @@
     --nav-bg:rgba(248,250,252,0.78);
   }
   *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;scroll-padding-top:84px;}
+  html{scroll-behavior:smooth;scroll-padding-top:84px;touch-action:pan-y;}
   @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
   body{
     margin:0;
@@ -89,7 +89,10 @@
     transform:translateZ(0);
   }
   @media (max-width:768px){
-    .navbar{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+    /* backdrop-filter on a fixed bar is one of the most expensive things a
+       phone GPU can do while the page scrolls underneath it — drop it on
+       mobile and fall back to a solid-enough background instead */
+    .navbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--background);}
   }
   .nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px;gap:14px;}
   .logo{font-weight:800;font-size:19px;letter-spacing:-0.01em;flex-shrink:0;}
@@ -192,9 +195,10 @@
     position:relative;z-index:2;width:100%;height:100%;overflow:hidden;
     border-radius:50% 50% 26px 26px/40% 40% 26px 26px;
     border:1px solid var(--card-border);box-shadow:0 24px 60px rgba(0,0,0,0.45);
-    transform-style:preserve-3d;transition:transform .1s ease-out;
+    transition:transform .1s ease-out;
     background:var(--card);
   }
+  @media (pointer:fine){ .arch-photo{transform-style:preserve-3d;} }
   .arch-photo img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
   .float-badge{
     position:absolute;z-index:3;display:inline-flex;align-items:center;gap:8px;
@@ -205,6 +209,8 @@
   }
   @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-11px);}}
   @media (prefers-reduced-motion: reduce){.float-badge, .float-orb{animation:none;}}
+  body.hero-offscreen .float-badge, body.hero-offscreen .float-orb,
+  body.hero-offscreen .orbit-ring, body.hero-offscreen .caret{animation-play-state:paused;}
   .float-badge svg{flex-shrink:0;}
   .badge-powerbi{top:2%;left:-9%;color:#f5b93f;}
   .badge-sql{top:20%;right:-11%;color:#5ee6ff;}
@@ -247,7 +253,8 @@
 
   .skills-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
   @media (max-width:700px){.skills-grid{grid-template-columns:1fr;}}
-  .skill-card{background:var(--card);border:1px solid var(--card-border);border-radius:18px;padding:26px;transition:border-color .2s ease, transform .2s ease;transform-style:preserve-3d;}
+  .skill-card{background:var(--card);border:1px solid var(--card-border);border-radius:18px;padding:26px;transition:border-color .2s ease, transform .2s ease;}
+  @media (pointer:fine){ .skill-card{transform-style:preserve-3d;} }
   .skill-card:hover{border-color:rgba(14,165,233,0.4);transform:translateY(-3px);}
   .skill-card-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
   .skill-icon{width:38px;height:38px;border-radius:10px;background:rgba(59,130,246,0.14);display:flex;align-items:center;justify-content:center;color:var(--secondary);}
@@ -266,8 +273,9 @@
 
   .project-card{
     background:var(--card);border:1px solid var(--card-border);border-radius:20px;padding:30px;
-    margin-bottom:24px;transition:border-color .2s ease, opacity .3s ease, transform .3s ease;transform-style:preserve-3d;
+    margin-bottom:24px;transition:border-color .2s ease, opacity .3s ease, transform .3s ease;
   }
+  @media (pointer:fine){ .project-card{transform-style:preserve-3d;} }
   .project-card:hover{border-color:rgba(14,165,233,0.35);}
   .project-card.hidden-card{display:none;}
   .project-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:8px;}
@@ -766,6 +774,17 @@ function onScroll(){
 document.addEventListener('scroll', onScroll, {passive:true});
 onScrollFrame();
 backToTop.addEventListener('click', () => window.scrollTo({top:0, behavior: reducedMotion ? 'auto' : 'smooth'}));
+
+/* Pause decorative hero animations (floating badges, orbit ring, caret) once
+   the hero has scrolled off screen — cuts continuous compositor work during
+   scroll on the rest of the page */
+const heroEl = document.getElementById('top');
+if(heroEl){
+  const heroIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => document.body.classList.toggle('hero-offscreen', !e.isIntersecting));
+  }, {threshold:0});
+  heroIO.observe(heroEl);
+}
 
 /* Scrollspy */
 const sections = document.querySelectorAll('section[id], header[id]');
