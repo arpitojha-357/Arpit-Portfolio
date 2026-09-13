@@ -125,7 +125,8 @@
   body:not(.light) .theme-toggle .icon-moon{display:block;}
   .nav-toggle{display:none;flex-direction:column;gap:5px;background:none;border:none;padding:6px;}
   .nav-toggle span{width:22px;height:2px;background:var(--foreground);border-radius:2px;}
-  .mobile-menu{display:none;flex-direction:column;gap:18px;padding:20px 24px 26px;border-top:1px solid var(--card-border);}
+  .mobile-menu{display:none;flex-direction:column;gap:10px;padding:20px 24px 26px;border-top:1px solid var(--card-border);}
+  .mobile-menu a{padding:10px 2px;font-size:16px;}
   .mobile-menu.open{display:flex;}
   @media (max-width:820px){
     .nav-links{display:none;}
@@ -778,10 +779,19 @@ backToTop.addEventListener('click', () => window.scrollTo({top:0, behavior: redu
 /* Pause decorative hero animations (floating badges, orbit ring, caret) once
    the hero has scrolled off screen — cuts continuous compositor work during
    scroll on the rest of the page */
+let heroVisible = true;
+let typewriterPaused = false;
 const heroEl = document.getElementById('top');
 if(heroEl){
   const heroIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => document.body.classList.toggle('hero-offscreen', !e.isIntersecting));
+    entries.forEach(e => {
+      heroVisible = e.isIntersecting;
+      document.body.classList.toggle('hero-offscreen', !heroVisible);
+      if(heroVisible && typewriterPaused){
+        typewriterPaused = false;
+        typeLoop();
+      }
+    });
   }, {threshold:0});
   heroIO.observe(heroEl);
 }
@@ -831,23 +841,28 @@ counters.forEach(c => countIO.observe(c));
 /* Typewriter hero role */
 const roles = ['Data Analyst', 'Power BI Developer', 'SQL & Python Enthusiast', 'Dashboard Builder'];
 const typedEl = document.getElementById('typedRole');
+let typeLoop = function(){};
 if(reducedMotion){
   typedEl.textContent = roles[0];
 } else {
   let roleIndex = 0, charIndex = 0, deleting = false;
-  function typeLoop(){
+  function scheduleType(delay){
+    if(!heroVisible){ typewriterPaused = true; return; }
+    setTimeout(typeLoop, delay);
+  }
+  typeLoop = function(){
     const current = roles[roleIndex];
     if(!deleting){
       charIndex++;
       typedEl.textContent = current.slice(0, charIndex);
-      if(charIndex === current.length){ deleting = true; setTimeout(typeLoop, 1500); return; }
+      if(charIndex === current.length){ deleting = true; scheduleType(1500); return; }
     } else {
       charIndex--;
       typedEl.textContent = current.slice(0, charIndex);
       if(charIndex === 0){ deleting = false; roleIndex = (roleIndex + 1) % roles.length; }
     }
-    setTimeout(typeLoop, deleting ? 35 : 65);
-  }
+    scheduleType(deleting ? 35 : 65);
+  };
   typeLoop();
 }
 
